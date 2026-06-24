@@ -1,9 +1,28 @@
 import torch
 import glob
 import numpy as np
+import torch.nn.functional as F
 from measure_variance_ratio import load_module_from_path
 from measure_variance_ratio import build_model
 from train_gpt import load_data_shard
+
+def forward_pass_get_representations(model, input_ids):
+    with torch.no_grad():
+        x = model.tok_emb(input_ids)
+        x = F.rms_norm(x, (x.size(-1),))
+        x0 = x
+        skips = []
+
+        # First half stores skips; second half reuses them in reverse order.
+        for i in range(model.num_encoder_layers):
+            x = model.blocks[i](x, x0)
+            skips.append(x)
+        for i in range(model.num_decoder_layers):
+            if skips:
+                x = x + model.skip_weights[i].to(dtype=x.dtype)[None, None, :] * skips.pop()
+            x = model.blocks[model.num_encoder_layers + i](x, x0)
+
+        return model.final_norm(x).reshape(-1, x.size(-1))
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
