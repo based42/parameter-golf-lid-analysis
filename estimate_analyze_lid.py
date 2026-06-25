@@ -2,6 +2,7 @@ import torch
 import glob
 import numpy as np
 import torch.nn.functional as F
+from pathlib import Path
 from measure_variance_ratio import load_module_from_path
 from measure_variance_ratio import build_model
 from train_gpt import load_data_shard
@@ -35,8 +36,8 @@ def main():
     train_files = sorted(glob.glob(args.train_files))
     val_files = sorted(glob.glob(args.val_files))
 
-    train_tokens = load_data_shard(train_files[0])
-    val_tokens = load_data_shard(val_files[0])
+    train_tokens = load_data_shard(Path(train_files[0]))
+    val_tokens = load_data_shard(Path(val_files[0]))
 
     # probe size
     train_tokens = train_tokens[:8192]
