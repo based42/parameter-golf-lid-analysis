@@ -29,7 +29,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     mod = load_module_from_path("train_gpt.py")
-    args = mod.Hyperparameters
+    args = mod.Hyperparameters()
     model = build_model(mod, device, "standard")
 
 
