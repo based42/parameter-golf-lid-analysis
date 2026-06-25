@@ -1,5 +1,6 @@
 import torch
 import glob
+import skdim
 import numpy as np
 import torch.nn.functional as F
 from pathlib import Path
@@ -36,12 +37,37 @@ def main():
     train_files = sorted(glob.glob(args.train_files))
     val_files = sorted(glob.glob(args.val_files))
 
-    train_tokens = load_data_shard(Path(train_files[0]))
-    val_tokens = load_data_shard(Path(val_files[0]))
+    train_tokens = load_data_shard(Path(train_files[0])).long().to(device)
+    val_tokens = load_data_shard(Path(val_files[0])).long().to(device)
 
     # probe size
     train_tokens = train_tokens[:8192]
     val_tokens = val_tokens[:8192]
+
+
+    checkpoints = glob.glob("checkpoints/model_step_*.pt")
+
+    count = 0
+    for checkpoint in checkpoints:
+        count += 1
+        step = args.save_checkpoint_every * count
+
+        state_dict = torch.load(checkpoint, map_location=device, weights_only=True)
+        model.load_state_dict(state_dict)
+
+        estimator = skdim.id.TwoNN(discard_fraction=0.1)
+
+        train_hidden_states = forward_pass_get_representations(model, train_tokens)
+        train_hidden_states_np = train_hidden_states.float().cpu().numpy()
+        estimator.fit_pw(train_hidden_states_np)
+        train_lid = np.mean(estimator.dimension_pw_)
+
+        val_hidden_states = forward_pass_get_representations(model, val_tokens)
+        val_hidden_states_np = val_hidden_states.float().cpu().numpy()
+        estimator.fit_pw(val_hidden_states_np)
+        val_lid = np.mean(estimator.dimension_pw_)
+
+        print(f"Step {step}, Train LID: {train_lid}, Val LID: {val_lid}")
 
 if __name__ == "__main__":
     main()
