@@ -8,3 +8,10 @@ typing-extensions==4.15.0
 datasets
 tiktoken
 sentencepiece
+numba
+numpy
+scipy
+scikit-learn
+matplotlib
+pandas
+scikit-dimension
