@@ -1,5 +1,6 @@
 import torch
 import glob
+import re
 import skdim
 import numpy as np
 import torch.nn.functional as F
@@ -46,6 +47,7 @@ def main():
 
 
     checkpoints = glob.glob("checkpoints/model_step_*.pt")
+    checkpoints.sort(key=lambda f: int(re.search(r"model_step_(\d+)\.pt", f).group(1)))
 
     count = 0
     for checkpoint in checkpoints:
