@@ -61,11 +61,17 @@ def main():
 
         train_hidden_states = forward_pass_get_representations(model, train_tokens)
         train_hidden_states_np = train_hidden_states.float().cpu().numpy()
+        if count == 1:
+            train_hidden_states_np = np.unique(train_hidden_states_np, axis=0)
+
         estimator.fit_pw(train_hidden_states_np)
         train_lid = np.mean(estimator.dimension_pw_)
 
         val_hidden_states = forward_pass_get_representations(model, val_tokens)
         val_hidden_states_np = val_hidden_states.float().cpu().numpy()
+        if count == 1:
+            val_hidden_states_np = np.unique(val_hidden_states_np, axis=0)
+
         estimator.fit_pw(val_hidden_states_np)
         val_lid = np.mean(estimator.dimension_pw_)
 
