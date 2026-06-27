@@ -49,10 +49,12 @@ def main():
     checkpoints = glob.glob("checkpoints/model_step_*.pt")
     checkpoints.sort(key=lambda f: int(re.search(r"model_step_(\d+)\.pt", f).group(1)))
 
+    results = np.zeros((len(checkpoints), 3))
+
     count = 0
     for checkpoint in checkpoints:
         count += 1
-        step = args.save_checkpoint_every * count
+        step = args.save_checkpoint_every * (count - 1)
 
         state_dict = torch.load(checkpoint, map_location=device, weights_only=True)
         model.load_state_dict(state_dict)
@@ -75,7 +77,12 @@ def main():
         estimator.fit_pw(val_hidden_states_np)
         val_lid = np.mean(estimator.dimension_pw_)
 
+        results[(count - 1), 0] = step
+        results[(count - 1), 1] = train_lid
+        results[(count - 1), 2] = val_lid
         print(f"Step {step}, Train LID: {train_lid}, Val LID: {val_lid}")
+    
+    np.savetxt('lid.csv', results, delimiter=",")
 
 if __name__ == "__main__":
     main()
