@@ -14,3 +14,4 @@ logs/
 .claude/settings.local.json
 STRATEGY.md
 checkpoints/
+final_model.pt
