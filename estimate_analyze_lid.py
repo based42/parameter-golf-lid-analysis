@@ -82,7 +82,7 @@ def main():
         results[(count - 1), 2] = val_lid
         print(f"Step {step}, Train LID: {train_lid}, Val LID: {val_lid}")
     
-    np.savetxt('lid.csv', results, delimiter=",")
+    np.savetxt('lid.csv', results, delimiter=",", fmt="%f")
 
 if __name__ == "__main__":
     main()
