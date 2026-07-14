@@ -698,7 +698,7 @@ class GPT(nn.Module):
             if isinstance(module, nn.Linear) and getattr(module, "_zero_init", False):
                 nn.init.zeros_(module.weight)
 
-    def forward(self, input_ids: Tensor, target_ids: Tensor) -> Tensor:
+    def forward_representations(self, input_ids: Tensor) -> Tensor:
         x = self.tok_emb(input_ids)
         x = F.rms_norm(x, (x.size(-1),))
         x0 = x
@@ -712,9 +712,12 @@ class GPT(nn.Module):
             if skips:
                 x = x + self.skip_weights[i].to(dtype=x.dtype)[None, None, :] * skips.pop()
             x = self.blocks[self.num_encoder_layers + i](x, x0)
+        
+        return self.final_norm(x).reshape(-1, x.size(-1))
 
-        x = self.final_norm(x).reshape(-1, x.size(-1))
-        targets = target_ids.reshape(-1)
+    def forward(self, input_ids: Tensor, target_ids: Tensor) -> Tensor:
+        x = self.forward_representations(self, input_ids)
+        targets = target_ids.reshape(-1)        
         if self.tie_embeddings:
             logits_proj = F.linear(x, self.tok_emb.weight)
         else:
