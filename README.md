@@ -7,8 +7,8 @@ Clone the repository, create a new python environment and install the dependenci
 ```bash
 git clone https://github.com/based42/parameter-golf-lid-analysis.git
 cd parameter-golf-lid-analysis
-python -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
