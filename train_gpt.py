@@ -716,8 +716,8 @@ class GPT(nn.Module):
         return self.final_norm(x).reshape(-1, x.size(-1))
 
     def forward(self, input_ids: Tensor, target_ids: Tensor) -> Tensor:
-        x = self.forward_representations(self, input_ids)
-        targets = target_ids.reshape(-1)        
+        x = self.forward_representations(input_ids)
+        targets = target_ids.reshape(-1)
         if self.tie_embeddings:
             logits_proj = F.linear(x, self.tok_emb.weight)
         else:
