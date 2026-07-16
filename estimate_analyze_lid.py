@@ -3,7 +3,6 @@ import glob
 import re
 import skdim
 import numpy as np
-import torch.nn.functional as F
 from pathlib import Path
 from measure_variance_ratio import load_module_from_path
 from measure_variance_ratio import build_model
@@ -12,6 +11,10 @@ from train_gpt import load_data_shard
 def get_representations(model, input_ids):
     with torch.inference_mode():
         return model.forward_representations(input_ids)
+
+def deduplicate_representations(representations):
+    _, indices = np.unique(representations, axis=0, return_index=True)
+    return representations[np.sort(indices)]
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -48,17 +51,13 @@ def main():
         estimator = skdim.id.TwoNN(discard_fraction=0.1)
 
         train_hidden_states = get_representations(model, train_tokens)
-        train_hidden_states_np = train_hidden_states.float().cpu().numpy()
-        if count == 1:
-            train_hidden_states_np = np.unique(train_hidden_states_np, axis=0)
+        train_hidden_states_np = deduplicate_representations(train_hidden_states.float().cpu().numpy())
 
         estimator.fit_pw(train_hidden_states_np)
         train_lid = np.mean(estimator.dimension_pw_)
 
         val_hidden_states = get_representations(model, val_tokens)
-        val_hidden_states_np = val_hidden_states.float().cpu().numpy()
-        if count == 1:
-            val_hidden_states_np = np.unique(val_hidden_states_np, axis=0)
+        val_hidden_states_np = deduplicate_representations(val_hidden_states.float().cpu().numpy())
 
         estimator.fit_pw(val_hidden_states_np)
         val_lid = np.mean(estimator.dimension_pw_)
