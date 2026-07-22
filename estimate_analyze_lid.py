@@ -56,7 +56,7 @@ def build_parser():
 
     estimator_group = parser.add_argument_group("token sampling and LID estimation")
     estimator_group.add_argument(
-        "--num-tokens-sampled",
+        "--num-sampled-tokens",
         metavar="N",
         type=positive_int,
         required=True,
