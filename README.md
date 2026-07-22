@@ -38,7 +38,10 @@ Checkpoints are saved every `x` steps determined by `CHECKPOINT_EVERY`.
 Run the LID analysis based on the checkpoints saved from `train_gpt.py`:
 
 ```bash
-python estimate_analyze_lid.py
+python estimate_analyze_lid.py \
+  --num-sampled-sequences 8 \
+  --num-sampled-tokens 512 \
+  --neighborhood-size 32
 ```
 
 Outputs the results to `lid.csv`.
