@@ -1,12 +1,84 @@
-import torch
+import argparse
 import glob
 import re
-import skdim
-import numpy as np
 from pathlib import Path
+import numpy as np
+import skdim
+import torch
 from measure_variance_ratio import load_module_from_path
 from measure_variance_ratio import build_model
 from train_gpt import load_data_shard
+
+
+def positive_int(value):
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return parsed
+
+def neighborhood_size(value):
+    parsed = int(value)
+    if parsed < 3:
+        raise argparse.ArgumentTypeError("must be at least 3")
+    return parsed
+
+def build_parser():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Estimate pointwise local intrinsic dimensions of final-layer token " +
+            "representations from model checkpoints"
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    data_group = parser.add_argument_group("sequence sampling")
+    data_group.add_argument(
+        "--num-sampled-sequences",
+        metavar="M",
+        type=positive_int,
+        required=True,
+        help=(
+            "Number of sequences sampled (M)"
+        ),
+    )
+    data_group.add_argument(
+        "--sequence-length",
+        type=positive_int,
+        default=1024,
+        help=(
+            "Number of tokens per sequence"
+        ),
+    )
+    data_group.add_argument(
+        "--sequence-sampling-seed",
+        type=int,
+        default=42,
+    )
+
+    estimator_group = parser.add_argument_group("token sampling and LID estimation")
+    estimator_group.add_argument(
+        "--num-tokens-sampled",
+        metavar="N",
+        type=positive_int,
+        required=True,
+        help=(
+            "Number of token representation vectors sampled (N)"
+        ),
+    )
+    estimator_group.add_argument(
+        "--token-sampling-seed",
+        type=int,
+        default=42,
+    )
+    estimator_group.add_argument(
+        "--neighborhood-size",
+        metavar="L",
+        type=neighborhood_size,
+        required=True,
+        help=(
+            "Number of nearest neighbors used for each pointwise localized TwoNN estimate (L)"
+        ),
+    )
+    return parser
 
 def get_representations(model, input_ids):
     with torch.inference_mode():
@@ -16,16 +88,16 @@ def deduplicate_representations(representations):
     _, indices = np.unique(representations, axis=0, return_index=True)
     return representations[np.sort(indices)]
 
-def main():
+def main(cli_args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     mod = load_module_from_path("train_gpt.py")
-    args = mod.Hyperparameters()
+    training_args = mod.Hyperparameters()
     model = build_model(mod, device, "standard")
 
 
-    train_files = sorted(glob.glob(args.train_files))
-    val_files = sorted(glob.glob(args.val_files))
+    train_files = sorted(glob.glob(training_args.train_files))
+    val_files = sorted(glob.glob(training_args.val_files))
 
     train_tokens = load_data_shard(Path(train_files[0])).long().to(device)
     val_tokens = load_data_shard(Path(val_files[0])).long().to(device)
@@ -43,7 +115,7 @@ def main():
     count = 0
     for checkpoint in checkpoints:
         count += 1
-        step = args.save_checkpoint_every * (count - 1)
+        step = training_args.save_checkpoint_every * (count - 1)
 
         state_dict = torch.load(checkpoint, map_location=device, weights_only=True)
         model.load_state_dict(state_dict)
@@ -70,4 +142,4 @@ def main():
     np.savetxt('lid.csv', results, delimiter=",", fmt="%f")
 
 if __name__ == "__main__":
-    main()
+    main(build_parser().parse_args())
