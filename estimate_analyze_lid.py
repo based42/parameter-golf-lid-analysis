@@ -88,6 +88,23 @@ def deduplicate_representations(representations):
     _, indices = np.unique(representations, axis=0, return_index=True)
     return representations[np.sort(indices)]
 
+def sample_sequences(path, num_sequences, sequence_length, seed):
+    path = Path(path)
+    num_shard_tokens = load_data_shard(path)
+    num_windows = num_shard_tokens.numel() // sequence_length
+
+    if num_sequences > num_windows:
+        raise ValueError(
+            f"Number of sampled sequences ({num_sequences}) "
+            f"can not be bigger than available windows ({num_windows})")
+
+    usable_tokens = num_shard_tokens[:num_windows * sequence_length]
+    windows = usable_tokens.reshape(num_windows, sequence_length)
+
+    sampled_indices = np.random.default_rng(seed).choice(num_windows, size=num_sequences, replace=False)
+
+    return windows[torch.from_numpy(sampled_indices)].long()
+
 def main(cli_args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -99,12 +116,18 @@ def main(cli_args):
     train_files = sorted(glob.glob(training_args.train_files))
     val_files = sorted(glob.glob(training_args.val_files))
 
-    train_tokens = load_data_shard(Path(train_files[0])).long().to(device)
-    val_tokens = load_data_shard(Path(val_files[0])).long().to(device)
-
-    # probe size
-    train_tokens = train_tokens[:8192]
-    val_tokens = val_tokens[:8192]
+    train_tokens = sample_sequences(
+        train_files[0],
+        cli_args.num_sampled_sequences,
+        cli_args.sequence_length,
+        cli_args.sequence_sampling_seed
+    )
+    val_tokens = sample_sequences(
+        val_files[0],
+        cli_args.num_sampled_sequences,
+        cli_args.sequence_length,
+        cli_args.sequence_sampling_seed
+    )
 
 
     checkpoints = glob.glob("checkpoints/model_step_*.pt")
