@@ -121,13 +121,14 @@ def main(cli_args):
         cli_args.num_sampled_sequences,
         cli_args.sequence_length,
         cli_args.sequence_sampling_seed
-    )
+    ).to(device)
+
     val_tokens = sample_sequences(
         val_files[0],
         cli_args.num_sampled_sequences,
         cli_args.sequence_length,
         cli_args.sequence_sampling_seed
-    )
+    ).to(device)
 
 
     checkpoints = glob.glob("checkpoints/model_step_*.pt")
