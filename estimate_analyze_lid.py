@@ -88,6 +88,18 @@ def deduplicate_representations(representations):
     _, indices = np.unique(representations, axis=0, return_index=True)
     return representations[np.sort(indices)]
 
+def sample_representations(representations, num_representations, seed):
+    available_vectors = representations.shape[0]
+
+    if num_representations > available_vectors:
+        raise ValueError(
+            f"Number of sampled token vectors ({available_vectors})"
+            f"can not be bigger than available unique vectors ({available_vectors})")
+
+    sampled_indices = np.random.default_rng(seed).choice(available_vectors, size=num_representations, replace=False)
+
+    return representations[sampled_indices]
+
 def sample_sequences(path, num_sequences, sequence_length, seed):
     path = Path(path)
     num_shard_tokens = load_data_shard(path)
@@ -149,11 +161,21 @@ def main(cli_args):
         train_hidden_states = get_representations(model, train_tokens)
         train_hidden_states_np = deduplicate_representations(train_hidden_states.float().cpu().numpy())
 
+        train_hidden_states_np = sample_representations(
+            train_hidden_states_np,
+            cli_args.num_sampled_tokens,
+            cli_args.token_sampling_seed)
+
         estimator.fit_pw(train_hidden_states_np)
         train_lid = np.mean(estimator.dimension_pw_)
 
         val_hidden_states = get_representations(model, val_tokens)
         val_hidden_states_np = deduplicate_representations(val_hidden_states.float().cpu().numpy())
+
+        train_hidden_states_np = sample_representations(
+                    val_hidden_states_np,
+                    cli_args.num_sampled_tokens,
+                    cli_args.token_sampling_seed)
 
         estimator.fit_pw(val_hidden_states_np)
         val_lid = np.mean(estimator.dimension_pw_)
