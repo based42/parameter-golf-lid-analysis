@@ -93,7 +93,7 @@ def sample_representations(representations, num_representations, seed):
 
     if num_representations > available_vectors:
         raise ValueError(
-            f"Number of sampled token vectors ({available_vectors})"
+            f"Number of sampled token vectors ({num_representations})"
             f"can not be bigger than available unique vectors ({available_vectors})")
 
     sampled_indices = np.random.default_rng(seed).choice(available_vectors, size=num_representations, replace=False)
