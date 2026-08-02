@@ -15,3 +15,4 @@ logs/
 STRATEGY.md
 checkpoints/
 final_model.pt
+lid.csv
