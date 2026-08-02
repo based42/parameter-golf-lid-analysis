@@ -40,7 +40,7 @@ Run the LID analysis based on the checkpoints saved from `train_gpt.py`:
 ```bash
 python estimate_analyze_lid.py \
   --num-sampled-sequences 8 \
-  --num-sampled-tokens 512 \
+  --num-sampled-token-vectors 512 \
   --neighborhood-size 32
 ```
 

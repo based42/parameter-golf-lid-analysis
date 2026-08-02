@@ -56,7 +56,7 @@ def build_parser():
 
     estimator_group = parser.add_argument_group("token sampling and LID estimation")
     estimator_group.add_argument(
-        "--num-sampled-tokens",
+        "--num-sampled-token-vectors",
         metavar="N",
         type=positive_int,
         required=True,
@@ -163,7 +163,7 @@ def main(cli_args):
 
         train_hidden_states_np = sample_representations(
             train_hidden_states_np,
-            cli_args.num_sampled_tokens,
+            cli_args.num_sampled_token_vectors,
             cli_args.token_sampling_seed)
 
         estimator.fit_pw(train_hidden_states_np)
@@ -174,7 +174,7 @@ def main(cli_args):
 
         train_hidden_states_np = sample_representations(
                     val_hidden_states_np,
-                    cli_args.num_sampled_tokens,
+                    cli_args.num_sampled_token_vectors,
                     cli_args.token_sampling_seed)
 
         estimator.fit_pw(val_hidden_states_np)
