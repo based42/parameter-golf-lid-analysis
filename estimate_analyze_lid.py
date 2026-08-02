@@ -81,6 +81,7 @@ def build_parser():
     return parser
 
 def get_representations(model, input_ids):
+    model.eval()
     with torch.inference_mode():
         return model.forward_representations(input_ids)
 
