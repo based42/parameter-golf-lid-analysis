@@ -160,6 +160,15 @@ def main(cli_args):
         estimator = skdim.id.TwoNN(discard_fraction=0.1)
 
         train_hidden_states = get_representations(model, train_tokens)
+
+        flat_ids = train_tokens.reshape(-1)
+        special_token_mask = (
+            (flat_ids != 0) &
+            (flat_ids != 1) &
+            (flat_ids != 2)
+            )
+        train_hidden_states = train_hidden_states[special_token_mask]
+
         train_hidden_states_np = deduplicate_representations(train_hidden_states.float().cpu().numpy())
 
         train_hidden_states_np = sample_representations(
@@ -172,6 +181,15 @@ def main(cli_args):
         train_lid = np.mean(estimator.dimension_pw_)
 
         val_hidden_states = get_representations(model, val_tokens)
+
+        flat_ids = val_tokens.reshape(-1)
+        special_token_mask = (
+            (flat_ids != 0) &
+            (flat_ids != 1) &
+            (flat_ids != 2)
+            )
+        val_hidden_states = val_hidden_states[special_token_mask]
+
         val_hidden_states_np = deduplicate_representations(val_hidden_states.float().cpu().numpy())
 
         val_hidden_states_np = sample_representations(
