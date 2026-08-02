@@ -166,7 +166,8 @@ def main(cli_args):
             cli_args.num_sampled_token_vectors,
             cli_args.token_sampling_seed)
 
-        estimator.fit_pw(train_hidden_states_np)
+        estimator.fit_pw(X=train_hidden_states_np,
+                         n_neighbors=cli_args.neighborhood_size)
         train_lid = np.mean(estimator.dimension_pw_)
 
         val_hidden_states = get_representations(model, val_tokens)
@@ -177,7 +178,8 @@ def main(cli_args):
                     cli_args.num_sampled_token_vectors,
                     cli_args.token_sampling_seed)
 
-        estimator.fit_pw(val_hidden_states_np)
+        estimator.fit_pw(X=val_hidden_states_np,
+                         n_neighbors=cli_args.neighborhood_size)
         val_lid = np.mean(estimator.dimension_pw_)
 
         results[(count - 1), 0] = step
