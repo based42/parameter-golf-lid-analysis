@@ -118,6 +118,16 @@ def sample_sequences(path, num_sequences, sequence_length, seed):
 
     return windows[torch.from_numpy(sampled_indices)].long()
 
+def filter_special_token_vectors(input_ids, hidden_states):
+    flat_ids = input_ids.reshape(-1)
+    special_token_mask = (
+            (flat_ids != 0) &
+            (flat_ids != 1) &
+            (flat_ids != 2)
+            )
+    hidden_states = hidden_states[special_token_mask]
+    return hidden_states
+
 def main(cli_args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -161,13 +171,7 @@ def main(cli_args):
 
         train_hidden_states = get_representations(model, train_tokens)
 
-        flat_ids = train_tokens.reshape(-1)
-        special_token_mask = (
-            (flat_ids != 0) &
-            (flat_ids != 1) &
-            (flat_ids != 2)
-            )
-        train_hidden_states = train_hidden_states[special_token_mask]
+        train_hidden_states = filter_special_token_vectors(train_tokens, train_hidden_states)
 
         train_hidden_states_np = deduplicate_representations(train_hidden_states.float().cpu().numpy())
 
@@ -182,13 +186,7 @@ def main(cli_args):
 
         val_hidden_states = get_representations(model, val_tokens)
 
-        flat_ids = val_tokens.reshape(-1)
-        special_token_mask = (
-            (flat_ids != 0) &
-            (flat_ids != 1) &
-            (flat_ids != 2)
-            )
-        val_hidden_states = val_hidden_states[special_token_mask]
+        val_hidden_states = filter_special_token_vectors(val_tokens, val_hidden_states)
 
         val_hidden_states_np = deduplicate_representations(val_hidden_states.float().cpu().numpy())
 
