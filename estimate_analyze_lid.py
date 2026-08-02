@@ -172,7 +172,7 @@ def main(cli_args):
         val_hidden_states = get_representations(model, val_tokens)
         val_hidden_states_np = deduplicate_representations(val_hidden_states.float().cpu().numpy())
 
-        train_hidden_states_np = sample_representations(
+        val_hidden_states_np = sample_representations(
                     val_hidden_states_np,
                     cli_args.num_sampled_token_vectors,
                     cli_args.token_sampling_seed)
