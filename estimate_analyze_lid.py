@@ -1,6 +1,7 @@
 import argparse
 import glob
 import re
+import datetime
 from pathlib import Path
 import numpy as np
 import skdim
@@ -78,6 +79,21 @@ def build_parser():
             "Number of nearest neighbors used for each pointwise localized TwoNN estimate (L)"
         ),
     )
+
+    logging_group = parser.add_argument_group("logging, output")
+    logging_group.add_argument(
+        "--run-id",
+        type=str,
+        required=True,
+        help=(
+            "Identifier of training run this analysis will be run on"
+        )
+    )
+    logging_group.add_argument(
+        "--analysis-id",
+        required=False,
+        help=("Identifier for this analysis. If not specified, generates a random ID")
+    )
     return parser
 
 def get_representations(model, input_ids):
@@ -131,6 +147,14 @@ def filter_special_token_vectors(input_ids, hidden_states):
 def main(cli_args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    if cli_args.analysis_id is None:
+        cli_args.analysis_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    run_dir = Path(f"runs/{cli_args.run_id}")
+    analysis_dir = run_dir / "analysis" / cli_args.analysis_id
+
+    analysis_dir.mkdir(parents=True, exist_ok=True)
+
     mod = load_module_from_path("train_gpt.py")
     training_args = mod.Hyperparameters()
     model = build_model(mod, device, "standard")
@@ -154,7 +178,7 @@ def main(cli_args):
     ).to(device)
 
 
-    checkpoints = glob.glob("checkpoints/model_step_*.pt")
+    checkpoints = glob.glob(str(run_dir / "checkpoints" / "model_step_*.pt"))
     checkpoints.sort(key=lambda f: int(re.search(r"model_step_(\d+)\.pt", f).group(1)))
 
     results = np.zeros((len(checkpoints), 3))
@@ -204,7 +228,7 @@ def main(cli_args):
         results[(count - 1), 2] = val_lid
         print(f"Step {step}, Train LID: {train_lid}, Val LID: {val_lid}")
     
-    np.savetxt('lid.csv', results, delimiter=",", fmt="%f")
+    np.savetxt(f"{analysis_dir}/lid.csv", results, delimiter=",", fmt="%f")
 
 if __name__ == "__main__":
     main(build_parser().parse_args())
