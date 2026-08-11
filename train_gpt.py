@@ -779,6 +779,19 @@ def main() -> None:
         logfile = f"{run_dir}/log.txt"
         print(logfile)
 
+        import json
+        config_dict = {}
+        for key in dir(args):
+            if key.startswith('_'):
+                continue 
+            value = getattr(args, key)
+            if callable(value):
+                continue    
+            config_dict[key] = value
+
+        with open(f"{run_dir}/config.json", "w") as f:
+            json.dump(config_dict, f, indent=4)
+
     def log0(msg: str, console: bool = True) -> None:
         if not master_process:
             return
