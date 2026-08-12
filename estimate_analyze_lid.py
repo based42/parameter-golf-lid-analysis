@@ -3,6 +3,7 @@ import glob
 import re
 import datetime
 import json
+import sys
 from pathlib import Path
 import numpy as np
 import skdim
@@ -155,6 +156,20 @@ def main(cli_args):
     analysis_dir = run_dir / "analysis" / cli_args.analysis_id
 
     analysis_dir.mkdir(parents=True, exist_ok=True)
+    
+    logfile = analysis_dir / "log.txt"
+    def log0(msg: str, console: bool = True) -> None:
+        if console:
+            print(msg)
+        with open(logfile, "a", encoding="utf-8") as f:
+            print(msg, file=f)
+
+    code = Path(__file__).read_text(encoding="utf-8")
+    log0(code, console=False)
+    log0("=" * 100, console=False)
+    log0(f"Running Python {sys.version}", console=False)
+    log0(f"Running PyTorch {torch.__version__}", console=False)
+    log0("=" * 100, console=False)
 
     mod = load_module_from_path("train_gpt.py")
     training_args = mod.Hyperparameters()
@@ -227,7 +242,7 @@ def main(cli_args):
         results[(count - 1), 0] = step
         results[(count - 1), 1] = train_lid
         results[(count - 1), 2] = val_lid
-        print(f"Step {step}, Train LID: {train_lid}, Val LID: {val_lid}")
+        log0(f"step:{step} train_lid:{train_lid:.4f} val_lid:{val_lid:.4f}")
 
     with open(analysis_dir / "config.json", "w") as f:
             json.dump(vars(cli_args), f, indent=4)
