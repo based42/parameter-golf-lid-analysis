@@ -2,6 +2,7 @@ import argparse
 import glob
 import re
 import datetime
+import json
 from pathlib import Path
 import numpy as np
 import skdim
@@ -227,7 +228,10 @@ def main(cli_args):
         results[(count - 1), 1] = train_lid
         results[(count - 1), 2] = val_lid
         print(f"Step {step}, Train LID: {train_lid}, Val LID: {val_lid}")
-    
+
+    with open(analysis_dir / "config.json", "w") as f:
+            json.dump(vars(cli_args), f, indent=4)
+
     np.savetxt(f"{analysis_dir}/lid.csv", results, delimiter=",", fmt="%f")
 
 if __name__ == "__main__":
