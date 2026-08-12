@@ -792,6 +792,16 @@ def main() -> None:
         with open(f"{run_dir}/config.json", "w") as f:
             json.dump(config_dict, f, indent=4)
 
+        train_metrics_csv = f"{run_dir}/metrics_train.csv"
+        if not os.path.exists(train_metrics_csv):
+            with open(train_metrics_csv, "w") as f:
+                f.write("step,train_loss\n")
+
+        val_metrics_csv = f"{run_dir}/metrics_val.csv"
+        if not os.path.exists(val_metrics_csv):
+            with open(val_metrics_csv, "w") as f:
+                f.write("step,val_loss,val_bpb\n")
+
     def log0(msg: str, console: bool = True) -> None:
         if not master_process:
             return
@@ -1011,6 +1021,9 @@ def main() -> None:
                 f"step:{step}/{args.iterations} val_loss:{val_loss:.4f} val_bpb:{val_bpb:.4f} "
                 f"train_time:{training_time_ms:.0f}ms step_avg:{training_time_ms / max(step, 1):.2f}ms"
             )
+            if master_process:
+                with open(f"runs/{args.run_id}/metrics_val.csv", "a") as f:
+                    f.write(f"{step},{val_loss:.4f},{val_bpb:.4f}\n")
             torch.cuda.synchronize()
             t0 = time.perf_counter()
 
@@ -1069,6 +1082,9 @@ def main() -> None:
                 f"step:{step}/{args.iterations} train_loss:{train_loss.item():.4f} "
                 f"train_time:{approx_training_time_ms:.0f}ms step_avg:{approx_training_time_ms / step:.2f}ms"
             )
+            if master_process:
+                with open(f"runs/{args.run_id}/metrics_train.csv", "a") as f:
+                    f.write(f"{step},{train_loss.item():.4f}\n")
 
         # Needed to sync whether we've reached the wallclock cap.
         reached_cap = max_wallclock_ms is not None and approx_training_time_ms >= max_wallclock_ms
