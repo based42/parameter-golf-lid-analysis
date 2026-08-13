@@ -1,0 +1,47 @@
+[project]
+name = "parameter-golf"
+version = "0.1.0"
+description = "OpenAI Parameter Golf challenge scripts"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "numpy>=2,<2.3",
+  "tqdm",
+  "torch>=2.5,<2.6",
+  "huggingface-hub",
+  "kernels",
+  "setuptools",
+  "typing-extensions==4.15.0",
+  "datasets<3.6",
+  "tiktoken<0.12",
+  "sentencepiece>=0.2.0,<0.2.1",
+  "scikit-dimension>=0.3.7",
+]
+
+[dependency-groups]
+cloud = [
+  "runpod>=1.9.0",
+]
+mlx = [
+  "mlx",
+]
+plots = [
+  "matplotlib",
+  "typer",
+]
+test = [
+  "pytest",
+]
+
+[tool.uv]
+package = false
+constraint-dependencies = [
+  "pyarrow<21",
+  "gudhi<3.11",
+  "pandas<2.3",
+  "scikit-learn<1.8",
+  "wandb<0.23",
+  "networkit<=11",
+  "pyzmq<27",
+  "pot<=0.9.5",
+]
