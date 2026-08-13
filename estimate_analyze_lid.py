@@ -134,7 +134,7 @@ def sample_sequences(path, num_sequences, sequence_length, seed):
 
     sampled_indices = np.random.default_rng(seed).choice(num_windows, size=num_sequences, replace=False)
 
-    return windows[torch.from_numpy(sampled_indices)].long()
+    return windows.long()[torch.from_numpy(sampled_indices)]
 
 def filter_special_token_vectors(input_ids, hidden_states):
     flat_ids = input_ids.reshape(-1)
