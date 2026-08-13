@@ -16,7 +16,9 @@
                 "--num-sampled-token-vectors",
                 "512",
                 "--neighborhood-size",
-                "32"
+                "32",
+                "--run-id",
+                "<run-id>"
             ]
         }
     ]
