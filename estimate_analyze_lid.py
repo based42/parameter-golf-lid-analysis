@@ -247,7 +247,7 @@ def main(cli_args):
     with open(analysis_dir / "config.json", "w") as f:
             json.dump(vars(cli_args), f, indent=4)
 
-    np.savetxt(f"{analysis_dir}/lid.csv", results, delimiter=",", fmt="%f")
+    np.savetxt(f"{analysis_dir}/lid.csv", results, delimiter=",", fmt="%f", header="step,train_lid,val_lid", comments="")
 
 if __name__ == "__main__":
     main(build_parser().parse_args())
