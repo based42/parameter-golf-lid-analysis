@@ -110,6 +110,41 @@ def zeropower_via_newtonschulz5(G: Tensor, steps: int = 10, eps: float = 1e-7) -
     return X.T if transposed else X
 
 
+def env_flag(name: str, *, default: bool) -> bool:
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    normalized = raw_value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(
+        f"{name} must be one of 1/0, true/false, yes/no, or on/off; got {raw_value!r}"
+    )
+
+
+def compile_if_supported(target, *, enabled: bool = True, **kwargs):
+    if not enabled:
+        return target, "PARAMETER_GOLF_TORCH_COMPILE=0"
+    try:
+        return torch.compile(target, **kwargs), None
+    except RuntimeError as exc:
+        if "Dynamo is not supported" not in str(exc):
+            raise
+        return target, str(exc)
+
+
+def sdp_backend_policy(device_capability: tuple[int, int]) -> dict[str, bool]:
+    flash_supported = device_capability >= (8, 0)
+    return {
+        "cudnn": False,
+        "flash": flash_supported,
+        "mem_efficient": not flash_supported,
+        "math": not flash_supported,
+    }
+
+
 class Muon(torch.optim.Optimizer):
     def __init__(self, params, lr: float, momentum: float, backend_steps: int, nesterov: bool = True):
         super().__init__(
@@ -737,7 +772,10 @@ def main() -> None:
 
     code = Path(__file__).read_text(encoding="utf-8")
     args = Hyperparameters()
-    zeropower_via_newtonschulz5 = torch.compile(zeropower_via_newtonschulz5)
+    torch_compile_enabled = env_flag("PARAMETER_GOLF_TORCH_COMPILE", default=True)
+    zeropower_via_newtonschulz5, optimizer_compile_skip_reason = compile_if_supported(
+        zeropower_via_newtonschulz5, enabled=torch_compile_enabled
+    )
 
     # -----------------------------
     # DISTRIBUTED + CUDA SETUP
@@ -767,10 +805,12 @@ def main() -> None:
     torch.backends.cudnn.allow_tf32 = True
     from torch.backends.cuda import enable_cudnn_sdp, enable_flash_sdp, enable_math_sdp, enable_mem_efficient_sdp
 
-    enable_cudnn_sdp(False)
-    enable_flash_sdp(True)
-    enable_mem_efficient_sdp(False)
-    enable_math_sdp(False)
+    device_capability = torch.cuda.get_device_capability(device)
+    sdp_backends = sdp_backend_policy(device_capability)
+    enable_cudnn_sdp(sdp_backends["cudnn"])
+    enable_flash_sdp(sdp_backends["flash"])
+    enable_mem_efficient_sdp(sdp_backends["mem_efficient"])
+    enable_math_sdp(sdp_backends["math"])
 
     logfile = None
     if master_process:
@@ -868,8 +908,19 @@ def main() -> None:
         if isinstance(module, CastedLinear):
             module.float()
     restore_low_dim_params_to_fp32(base_model)
-    compiled_model = torch.compile(base_model, dynamic=False, fullgraph=True)
+    compiled_model, model_compile_skip_reason = compile_if_supported(
+        base_model,
+        enabled=torch_compile_enabled,
+        dynamic=False,
+        fullgraph=True,
+    )
     model: nn.Module = DDP(compiled_model, device_ids=[local_rank], broadcast_buffers=False) if distributed else compiled_model
+
+    compile_skip_reason = optimizer_compile_skip_reason or model_compile_skip_reason
+    if compile_skip_reason is None:
+        log0("torch_compile:enabled")
+    else:
+        log0(f"torch_compile:disabled reason:{compile_skip_reason}")
 
     # Optimizer split:
     # - token embedding (Adam) uses EMBED_LR
