@@ -203,10 +203,8 @@ def main(cli_args):
 
     results = np.zeros((len(checkpoints), 3))
 
-    count = 0
-    for checkpoint in checkpoints:
-        count += 1
-        step = training_args.save_checkpoint_every * (count - 1)
+    for result_index, checkpoint in enumerate(checkpoints):
+        step = int(re.search(r"model_step_(\d+)\.pt", checkpoint).group(1))
 
         state_dict = torch.load(checkpoint, map_location=device, weights_only=True)
         model.load_state_dict(state_dict)
@@ -243,9 +241,9 @@ def main(cli_args):
                          n_neighbors=cli_args.neighborhood_size)
         val_lid = np.mean(estimator.dimension_pw_)
 
-        results[(count - 1), 0] = step
-        results[(count - 1), 1] = train_lid
-        results[(count - 1), 2] = val_lid
+        results[result_index, 0] = step
+        results[result_index, 1] = train_lid
+        results[result_index, 2] = val_lid
         log0(f"step:{step} train_lid:{train_lid:.4f} val_lid:{val_lid:.4f}")
 
     with open(analysis_dir / "config.json", "w") as f:
