@@ -98,10 +98,16 @@ def build_parser():
     )
     return parser
 
-def get_representations(model, input_ids):
+def get_representations(model, input_ids, device, batch_size=32):
     model.eval()
+    chunks = []
+
     with torch.inference_mode():
-        return model.forward_representations(input_ids)
+        for token_batch in input_ids.split(batch_size):
+            representations = model.forward_representations(token_batch.to(device))
+            chunks.append(representations.float().cpu())
+
+    return torch.cat(chunks, dim=0)
 
 def deduplicate_representations(representations):
     _, indices = np.unique(representations, axis=0, return_index=True)
@@ -182,14 +188,14 @@ def main(cli_args):
         cli_args.num_sampled_sequences,
         cli_args.sequence_length,
         cli_args.sequence_sampling_seed
-    ).to(device)
+    )
 
     val_tokens = sample_sequences(
         val_files[0],
         cli_args.num_sampled_sequences,
         cli_args.sequence_length,
         cli_args.sequence_sampling_seed
-    ).to(device)
+    )
 
 
     checkpoints = glob.glob(str(run_dir / "checkpoints" / "model_step_*.pt"))
@@ -207,7 +213,7 @@ def main(cli_args):
 
         estimator = skdim.id.TwoNN(discard_fraction=0.1)
 
-        train_hidden_states = get_representations(model, train_tokens)
+        train_hidden_states = get_representations(model, train_tokens, device, batch_size=32)
 
         train_hidden_states = filter_special_token_vectors(train_tokens, train_hidden_states)
 
@@ -222,7 +228,7 @@ def main(cli_args):
                          n_neighbors=cli_args.neighborhood_size)
         train_lid = np.mean(estimator.dimension_pw_)
 
-        val_hidden_states = get_representations(model, val_tokens)
+        val_hidden_states = get_representations(model, val_tokens, device, batch_size=32)
 
         val_hidden_states = filter_special_token_vectors(val_tokens, val_hidden_states)
 
