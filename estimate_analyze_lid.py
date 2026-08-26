@@ -98,7 +98,7 @@ def build_parser():
     )
     return parser
 
-def get_representations(model, input_ids, device, batch_size=32):
+def get_representations(model, input_ids, device, batch_size=16):
     model.eval()
     chunks = []
 
@@ -211,7 +211,7 @@ def main(cli_args):
 
         estimator = skdim.id.TwoNN(discard_fraction=0.1)
 
-        train_hidden_states = get_representations(model, train_tokens, device, batch_size=32)
+        train_hidden_states = get_representations(model, train_tokens, device, batch_size=16)
 
         train_hidden_states = filter_special_token_vectors(train_tokens, train_hidden_states)
 
@@ -226,7 +226,7 @@ def main(cli_args):
                          n_neighbors=cli_args.neighborhood_size)
         train_lid = np.mean(estimator.dimension_pw_)
 
-        val_hidden_states = get_representations(model, val_tokens, device, batch_size=32)
+        val_hidden_states = get_representations(model, val_tokens, device, batch_size=16)
 
         val_hidden_states = filter_special_token_vectors(val_tokens, val_hidden_states)
 
