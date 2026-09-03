@@ -289,8 +289,9 @@ def main(cli_args):
                zeroth_shard_sequences_losses,
                delimiter=",",
                fmt="%f",
-               header="step,zeroth_shard_loss",
+               header="step,zeroth_shard_sequences_loss",
                comments="")
+    
 
 if __name__ == "__main__":
     main(build_parser().parse_args())
