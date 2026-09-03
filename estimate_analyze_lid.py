@@ -227,6 +227,7 @@ def main(cli_args):
 
     results = np.zeros((len(checkpoints), 3))
     zeroth_shard_sequences_losses = np.zeros((len(checkpoints), 2))
+    val_shard_sequences_losses = np.zeros((len(checkpoints), 2))
 
     for result_index, checkpoint in enumerate(checkpoints):
         step = int(re.search(r"model_step_(\d+)\.pt", checkpoint).group(1))
@@ -278,8 +279,17 @@ def main(cli_args):
         zeroth_shard_sequences_losses[result_index, 0] = step
         zeroth_shard_sequences_losses[result_index, 1] = zeroth_shard_sequences_loss
 
+        val_shard_sequences_loss = compute_loss_on_sequences(
+            val_tokens,
+            model,
+            device,
+            cli_args.loss_batch_size)
+        val_shard_sequences_losses[result_index, 0] = step
+        val_shard_sequences_losses[result_index, 1] = val_shard_sequences_loss
+
         log0(f"step:{step} train_lid:{train_lid:.4f} val_lid:{val_lid:.4f}")
         log0(f"zeroth_shard_sequences_loss:{zeroth_shard_sequences_loss:.4f}")
+        log0(f"val_shard_sequences_loss:{val_shard_sequences_loss:.4f}")
 
     with open(analysis_dir / "config.json", "w") as f:
             json.dump(vars(cli_args), f, indent=4)
@@ -291,6 +301,12 @@ def main(cli_args):
                fmt="%f",
                header="step,zeroth_shard_sequences_loss",
                comments="")
+    np.savetxt(f"{analysis_dir}/val_shard_sequences_loss.csv",
+                   val_shard_sequences_losses,
+                   delimiter=",",
+                   fmt="%f",
+                   header="step,val_shard_sequences_loss",
+                   comments="")
     
 
 if __name__ == "__main__":
