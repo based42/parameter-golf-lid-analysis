@@ -174,7 +174,7 @@ def main():
 
     first_run_dir = Path("runs") / args.run_id[0]
     first_analysis_dir = first_run_dir / "analysis" / args.analysis_id[0]
-    output_path = args.output or first_analysis_dir / "loss_and_lid.png"
+    output_path = args.output or first_analysis_dir / "loss_and_lid.pdf"
 
     figure, axes = plt.subplots(2, 1, figsize=(9, 7), sharex=True, sharey=True)
 
