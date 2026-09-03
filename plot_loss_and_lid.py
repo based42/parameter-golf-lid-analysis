@@ -183,7 +183,7 @@ def main():
         train_lids,
         [
             (zeroth_train_shard_seq_losses, "#df6a85", "Fixed training sample loss", "-"),
-            (train_losses, "#8ced7a", "Current batch training loss", "--"),
+            (train_losses, "#8ced7a", "Current batch loss", "--"),
         ],
         "Zeroth training shard",
         "Mean LID",
