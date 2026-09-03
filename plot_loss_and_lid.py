@@ -34,7 +34,7 @@ def aggregate(series_by_run):
     return np.asarray(common_steps), values.mean(axis=0), values.std(axis=0, ddof=ddof)
 
 
-def plot_mean_with_std(axis, series_by_run, color, label):
+def plot_mean_with_std(axis, series_by_run, color, label, linestyle="-"):
     steps, mean, std = aggregate(series_by_run)
     axis.fill_between(
         steps,
@@ -49,19 +49,20 @@ def plot_mean_with_std(axis, series_by_run, color, label):
         mean,
         color=color,
         linewidth=1.6,
+        linestyle=linestyle,
         marker="o",
         markersize=2.5,
         label=label,
     )
 
 
-def add_panel(axis, lid_series, loss_series, title, lid_label, loss_label):
-    lid_color = "#006AB3"
-    loss_color = "#EE7F00"
+def add_panel(axis, lid_series, loss_series, title, lid_label):
+    lid_color = "#677feb"
     loss_axis = axis.twinx()
 
     plot_mean_with_std(axis, lid_series, lid_color, lid_label)
-    plot_mean_with_std(loss_axis, loss_series, loss_color, loss_label)
+    for series, color, label, linestyle in loss_series:
+        plot_mean_with_std(loss_axis, series, color, label, linestyle)
 
     axis.set_title(title)
     axis.set_ylabel("Mean LID")
@@ -114,7 +115,9 @@ def main():
 
     run_analyses = list(zip(args.run_id, args.analysis_id))
     train_losses = []
+    zeroth_train_shard_seq_losses = []
     val_losses = []
+    val_shard_seq_losses = []
     train_lids = []
     val_lids = []
     lid_parameters = set()
@@ -128,10 +131,24 @@ def main():
                 run_dir / "metrics_train.csv", ("train_loss",), args.start_step
             )["train_loss"]
         )
+        zeroth_train_shard_seq_losses.append(
+            read_series(
+                analysis_dir / "zeroth_shard_sequences_loss.csv",
+                ("zeroth_shard_sequences_loss",),
+                args.start_step,
+            )["zeroth_shard_sequences_loss"]
+        )
         val_losses.append(
             read_series(run_dir / "metrics_val.csv", ("val_loss",), args.start_step)[
                 "val_loss"
             ]
+        )
+        val_shard_seq_losses.append(
+            read_series(
+                analysis_dir / "val_shard_sequences_loss.csv",
+                ("val_shard_sequences_loss",),
+                args.start_step,
+            )["val_shard_sequences_loss"]
         )
         lid_series = read_series(
             analysis_dir / "lid.csv", ("train_lid", "val_lid"), args.start_step
@@ -164,18 +181,22 @@ def main():
     train_loss_axis = add_panel(
         axes[0],
         train_lids,
-        train_losses,
-        "Training split",
+        [
+            (zeroth_train_shard_seq_losses, "#df6a85", "Fixed training sample loss", "-"),
+            (train_losses, "#8ced7a", "Current batch training loss", "--"),
+        ],
+        "Zeroth training shard",
         "Mean LID",
-        "Loss",
     )
     val_loss_axis = add_panel(
         axes[1],
         val_lids,
-        val_losses,
-        "Validation split",
+        [
+            (val_shard_seq_losses, "#df6a85", "Fixed validation sample loss", "-"),
+            (val_losses, "#e9ca6d", "Full validation shard loss", "--"),
+        ],
+        "Validation shard",
         "Mean LID",
-        "Loss",
     )
 
     axes[1].set_xlabel("Training step")
