@@ -285,7 +285,7 @@ def main(cli_args):
             json.dump(vars(cli_args), f, indent=4)
 
     np.savetxt(f"{analysis_dir}/lid.csv", results, delimiter=",", fmt="%f", header="step,train_lid,val_lid", comments="")
-    np.savetxt(f"{analysis_dir}/zeroth_shard_loss.csv",
+    np.savetxt(f"{analysis_dir}/zeroth_shard_sequences_loss.csv",
                zeroth_shard_sequences_losses,
                delimiter=",",
                fmt="%f",
