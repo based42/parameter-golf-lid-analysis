@@ -287,6 +287,8 @@ def main(cli_args):
         val_shard_sequences_losses[result_index, 0] = step
         val_shard_sequences_losses[result_index, 1] = val_shard_sequences_loss
 
+        timestamp = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+        log0(f"[{timestamp}]")
         log0(f"step:{step} train_lid:{train_lid:.4f} val_lid:{val_lid:.4f}")
         log0(f"zeroth_shard_sequences_loss:{zeroth_shard_sequences_loss:.4f}")
         log0(f"val_shard_sequences_loss:{val_shard_sequences_loss:.4f}")
