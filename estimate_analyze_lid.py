@@ -99,7 +99,7 @@ def build_parser():
     logging_group.add_argument(
         "--loss-batch-size",
         type=positive_int,
-        default=64,
+        default=32,
         help="Number of sequences per batch when evaluating zeroth-shard loss",
     )
     return parser
@@ -156,32 +156,17 @@ def filter_special_token_vectors(input_ids, hidden_states):
     hidden_states = hidden_states[special_token_mask]
     return hidden_states
 
-def compute_loss_on_shard(shard_tokens, model, device, sequence_length, batch_size):
-    num_target_tokens = ((shard_tokens.numel() - 1) // sequence_length) * sequence_length
-    if num_target_tokens < sequence_length:
-        raise ValueError(
-            f"Training shard is too short for sequence length {sequence_length}")
-
-    tokens = shard_tokens[:num_target_tokens + 1]
-    total_sequences = num_target_tokens // sequence_length
+def compute_loss_on_sequences(input_ids, model, device, batch_size):
     loss_sum = torch.zeros((), device=device, dtype=torch.float64)
     token_count = 0
 
     model.eval()
     with torch.inference_mode():
-        for sequence_start in range(0, total_sequences, batch_size):
-            sequence_end = min(sequence_start + batch_size, total_sequences)
-            raw_start = sequence_start * sequence_length
-            raw_end = sequence_end * sequence_length + 1
-            local = tokens[raw_start:raw_end].to(
-                device=device, dtype=torch.int64, non_blocking=True)
-            x = local[:-1].reshape(-1, sequence_length)
-            y = local[1:].reshape(-1, sequence_length)
-            with torch.autocast(
-                device_type=device.type,
-                dtype=torch.float16,
-                enabled=device.type == "cuda"):
-                batch_loss = model(x, y).detach()
+        for batch in input_ids.split(batch_size):
+            x = batch[:, :-1].to(device=device, dtype=torch.int64)
+            y = batch[:, 1:].to(device=device, dtype=torch.int64)
+
+            batch_loss = model(x, y).detach()
             batch_token_count = y.numel()
             loss_sum += batch_loss.to(torch.float64) * batch_token_count
             token_count += batch_token_count
@@ -228,7 +213,6 @@ def main(cli_args):
         cli_args.sequence_length,
         cli_args.sequence_sampling_seed
     )
-    zeroth_train_shard_tokens = load_data_shard(train_files[0])
 
     val_tokens = sample_sequences(
         val_files[0],
@@ -242,7 +226,7 @@ def main(cli_args):
     checkpoints.sort(key=lambda f: int(re.search(r"model_step_(\d+)\.pt", f).group(1)))
 
     results = np.zeros((len(checkpoints), 3))
-    zeroth_shard_losses = np.zeros((len(checkpoints), 2))
+    zeroth_shard_sequences_losses = np.zeros((len(checkpoints), 2))
 
     for result_index, checkpoint in enumerate(checkpoints):
         step = int(re.search(r"model_step_(\d+)\.pt", checkpoint).group(1))
@@ -286,24 +270,23 @@ def main(cli_args):
         results[result_index, 1] = train_lid
         results[result_index, 2] = val_lid
 
-        zeroth_shard_loss = compute_loss_on_shard(
-            zeroth_train_shard_tokens,
+        zeroth_shard_sequences_loss = compute_loss_on_sequences(
+            train_tokens,
             model,
             device,
-            cli_args.sequence_length,
             cli_args.loss_batch_size)
-        zeroth_shard_losses[result_index, 0] = step
-        zeroth_shard_losses[result_index, 1] = zeroth_shard_loss
+        zeroth_shard_sequences_losses[result_index, 0] = step
+        zeroth_shard_sequences_losses[result_index, 1] = zeroth_shard_sequences_loss
 
         log0(f"step:{step} train_lid:{train_lid:.4f} val_lid:{val_lid:.4f}")
-        log0(f"zeroth_shard_loss:{zeroth_shard_loss:.4f}")
+        log0(f"zeroth_shard_sequences_loss:{zeroth_shard_sequences_loss:.4f}")
 
     with open(analysis_dir / "config.json", "w") as f:
             json.dump(vars(cli_args), f, indent=4)
 
     np.savetxt(f"{analysis_dir}/lid.csv", results, delimiter=",", fmt="%f", header="step,train_lid,val_lid", comments="")
     np.savetxt(f"{analysis_dir}/zeroth_shard_loss.csv",
-               zeroth_shard_losses,
+               zeroth_shard_sequences_losses,
                delimiter=",",
                fmt="%f",
                header="step,zeroth_shard_loss",
