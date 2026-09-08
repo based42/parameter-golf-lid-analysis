@@ -837,6 +837,11 @@ def main() -> None:
             with open(train_metrics_csv, "w") as f:
                 f.write("step,train_loss\n")
 
+        lr_metrics_csv = f"{run_dir}/metrics_lr.csv"
+        if not os.path.exists(lr_metrics_csv):
+            with open(lr_metrics_csv, "w") as f:
+                f.write("step,embedding_lr,matrix_lr,scalar_lr\n")
+
         val_metrics_csv = f"{run_dir}/metrics_val.csv"
         if not os.path.exists(val_metrics_csv):
             with open(val_metrics_csv, "w") as f:
@@ -1136,6 +1141,12 @@ def main() -> None:
             if master_process:
                 with open(f"runs/{args.run_id}/metrics_train.csv", "a") as f:
                     f.write(f"{step},{train_loss.item():.4f}\n")
+                with open(lr_metrics_csv, "a") as f:
+                    f.write(
+                        f"{step},{optimizer_tok.param_groups[0]['lr']},"
+                        f"{optimizer_muon.param_groups[0]['lr']},"
+                        f"{optimizer_scalar.param_groups[0]['lr']}\n"
+                    )
 
         # Needed to sync whether we've reached the wallclock cap.
         reached_cap = max_wallclock_ms is not None and approx_training_time_ms >= max_wallclock_ms
