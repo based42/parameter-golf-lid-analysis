@@ -50,8 +50,6 @@ def plot_mean_with_std(axis, series_by_run, color, label, linestyle="-"):
         color=color,
         linewidth=1.6,
         linestyle=linestyle,
-        marker="o",
-        markersize=2.5,
         label=label,
     )
 
