@@ -34,6 +34,35 @@ def aggregate(series_by_run):
     return np.asarray(common_steps), values.mean(axis=0), values.std(axis=0, ddof=ddof)
 
 
+def read_matrix_learning_rate(run_dir, steps, start_step):
+    metrics_path = run_dir / "metrics_lr.csv"
+    if metrics_path.exists():
+        return read_series(metrics_path, ("matrix_lr",), start_step)["matrix_lr"]
+
+    with (run_dir / "config.json").open(encoding="utf-8") as file:
+        config = json.load(file)
+
+    if config.get("max_wallclock_seconds", 0) > 0:
+        raise ValueError(
+            f"{metrics_path} is missing and its wall-clock-based learning-rate "
+            "schedule cannot be reconstructed from the run config"
+        )
+
+    base_lr = float(config["matrix_lr"])
+    iterations = int(config["iterations"])
+    warmdown_iters = int(config["warmdown_iters"])
+    warmdown_start = max(iterations - warmdown_iters, 0)
+    learning_rates = {}
+    for logged_step in steps:
+        schedule_step = max(logged_step - 1, 0)
+        if warmdown_iters > 0 and warmdown_start <= schedule_step < iterations:
+            scale = (iterations - schedule_step) / warmdown_iters
+        else:
+            scale = 1.0
+        learning_rates[logged_step] = base_lr * scale
+    return learning_rates
+
+
 def plot_mean_with_std(axis, series_by_run, color, label, linestyle="-"):
     steps, mean, std = aggregate(series_by_run)
     axis.fill_between(
@@ -118,16 +147,19 @@ def main():
     val_shard_seq_losses = []
     train_lids = []
     val_lids = []
+    matrix_learning_rates = []
     lid_parameters = set()
 
     for run_id, analysis_id in run_analyses:
         run_dir = Path("runs") / run_id
         analysis_dir = run_dir / "analysis" / analysis_id
 
-        train_losses.append(
-            read_series(
-                run_dir / "metrics_train.csv", ("train_loss",), args.start_step
-            )["train_loss"]
+        train_loss = read_series(
+            run_dir / "metrics_train.csv", ("train_loss",), args.start_step
+        )["train_loss"]
+        train_losses.append(train_loss)
+        matrix_learning_rates.append(
+            read_matrix_learning_rate(run_dir, train_loss, args.start_step)
         )
         zeroth_train_shard_seq_losses.append(
             read_series(
@@ -174,7 +206,18 @@ def main():
     first_analysis_dir = first_run_dir / "analysis" / args.analysis_id[0]
     output_path = args.output or first_analysis_dir / "loss_and_lid.pdf"
 
-    figure, axes = plt.subplots(2, 1, figsize=(9, 7), sharex=True, sharey=True)
+    figure = plt.figure(figsize=(9, 7.7))
+    grid = figure.add_gridspec(3, 1, height_ratios=(1, 1, 0.28))
+    axes = [
+        figure.add_subplot(grid[0]),
+        figure.add_subplot(grid[1]),
+        figure.add_subplot(grid[2]),
+    ]
+    axes[1].sharex(axes[0])
+    axes[1].sharey(axes[0])
+    axes[2].sharex(axes[0])
+    axes[0].tick_params(axis="x", labelbottom=False)
+    axes[1].tick_params(axis="x", labelbottom=False)
 
     train_loss_axis = add_panel(
         axes[0],
@@ -197,7 +240,14 @@ def main():
         "Mean LID",
     )
 
-    axes[1].set_xlabel("Training step")
+    plot_mean_with_std(
+        axes[2], matrix_learning_rates, "#9b72cf", "Matrix learning rate"
+    )
+    axes[2].set_ylabel("Learning rate")
+    axes[2].set_xlabel("Training step")
+    axes[2].grid(alpha=0.25)
+    axes[2].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+    axes[2].legend(loc="lower center")
 
     loss_min = min(train_loss_axis.get_ylim()[0], val_loss_axis.get_ylim()[0])
     loss_max = max(train_loss_axis.get_ylim()[1], val_loss_axis.get_ylim()[1])
