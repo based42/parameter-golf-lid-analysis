@@ -20,10 +20,10 @@ uv sync
 ### 1. Download the dataset
 
 ```bash
-uv run python data/cached_challenge_fineweb.py --variant sp1024 --train-shards 10
+uv run python data/cached_challenge_fineweb.py --variant sp1024 --train-shards 105
 ```
 
-This downloads the first 10 training shards along with populating `./data/datasets/fineweb10B_sp1024/` and `./data/tokenizers/` using the script provided by the [parameter-golf](https://github.com/openai/parameter-golf) repository.
+This downloads the first 105 training shards along with populating `./data/datasets/fineweb10B_sp1024/` and `./data/tokenizers/` using the script provided by the [parameter-golf](https://github.com/openai/parameter-golf) repository.
 
 ### 2. Train the model
 
